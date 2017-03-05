@@ -1,0 +1,96 @@
+apply plugin: 'base' // To add "clean" task to the root project.
+apply from: 'configuration.gradle'
+apply plugin: "maven"
+
+
+
+subprojects {
+    apply from: rootProject.file('common.gradle')
+}
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        name "Tesla"
+        url 'http://maven.epoxide.xyz'
+    }
+    maven {
+        name 'Mobius'
+        url 'http://mobiusstrip.eu/maven'
+    }
+    maven {
+        name 'JEI'
+        url "http://dvs1.progwml6.com/files/maven"
+    }
+}
+configurations {
+    deployerJars
+}
+dependencies {
+    deployerJars 'org.apache.maven.wagon:wagon-ftp:2.2'
+}
+
+task wrapper(type: Wrapper, description: 'Creates and deploys the Gradle wrapper to the current directory.') {
+    gradleVersion = '2.6'
+}
+
+subprojects.each { subproject -> evaluationDependsOn( subproject.path ) }
+
+task setupDecompWorkspaceAll(dependsOn: projects1710.collect { ':' + it + ":setupDecompWorkspace" } ) {}
+
+task setupCIWorkspaceAll(dependsOn: projects1710.collect { ':' + it + ":setupCIWorkspace" } ) {}
+
+task assembleMC1710(type: Jar, dependsOn: [\
+		':ZenScript:build',
+		':MineTweaker3-API:build']
+		+ projects1710.collect { ':' + it + ":build" }) {
+	archiveName="CraftTweaker-1.7.10-${mineTweakerVersion}.jar"
+
+	from zipTree(project(":ZenScript").jar.archivePath)
+	from zipTree(project(':MineTweaker3-API').jar.archivePath)
+
+	for (p in projects1710) {
+		from zipTree(project(p).jar.archivePath)
+	}
+}
+
+task assembleDevBase1710(type: Jar, dependsOn: [
+		':ZenScript:build',
+		':MineTweaker3-API:build',
+		':MineTweaker3-MC1710-Main:build']) {
+	archiveName="CraftTweaker-Dev-1.7.10-${mineTweakerVersion}.jar"
+
+	from project(':ZenScript').sourceSets.main.output
+	from project(':MineTweaker3-API').sourceSets.main.output
+	from project(':MineTweaker3-MC1710-Main').sourceSets.main.output
+}
+
+task assembleDevFull1710(type: Jar, dependsOn: [
+		':ZenScript:build',
+		':MineTweaker3-API:build']
+		+ projects1710.collect { ':' + it + ":build" }) {
+	archiveName="CraftTweaker-Dev-Full-1.7.10-${mineTweakerVersion}.jar"
+
+	from project(':ZenScript').sourceSets.main.output
+	from project(':MineTweaker3-API').sourceSets.main.output
+
+	for (p in projects1710) {
+		from project(p).sourceSets.main.output
+	}
+}
+
+
+task assembleAll(dependsOn: [
+	assembleMC1710,
+	assembleDevBase1710,
+	assembleDevFull1710) {
+}
+
+configurations {
+    deployerJars
+}
+
+
+
+
+
